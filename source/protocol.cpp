@@ -61,11 +61,11 @@ message readMessage(int socket, char * buffer) {
     // read from the socket while it is still open (0 means closed)
     while (received_length != 0) {
         if (received_length > 0) {
-            // data was received :)
+            // data was received, yay :)
             
             // protocol handling
 
-            // TODO protocol handling without finite-state machine to improve performance
+            // TODO handle protocol without finite-state machine to improve performance (and perhaps make it better readable ...)
             /* first draft:
             // check that the message starts with a $
             if (buffer[0] == '$') {
@@ -89,6 +89,7 @@ message readMessage(int socket, char * buffer) {
             */
 
             for (int i = 0; i < received_length; i++) {
+                // make an action depending on the current state
                 switch (parsestate) {
                     case START:
                         if (buffer[i] == '$') {
