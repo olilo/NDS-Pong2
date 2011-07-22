@@ -56,6 +56,8 @@ message readMessage(int socket, char * buffer) {
     char param_str[10];
     int param_str_length = 0;
 
+    int message_checksum = 0;
+
     // read from the socket while it is still open (0 means closed)
     while (received_length != 0) {
         if (received_length > 0) {
@@ -96,6 +98,8 @@ message readMessage(int socket, char * buffer) {
                         }
                         break;
                     case STATUS_DECODE:
+                        message_checksum ^= buffer[i];
+
                         if (buffer[i] == ',' && statuscode_length == 5) {
                             message.status = statuscode;
                             parsestate = PARAM_DECODE;
@@ -109,7 +113,8 @@ message readMessage(int socket, char * buffer) {
                         }
                         break;
                     case PARAM_DECODE:
-                        // TODO
+                        message_checksum ^= buffer[i];
+
                         if (buffer[i] >= '0' && buffer[i] <= '9') {
                             param_str[param_str_length++] = buffer[i];
                         } else if (buffer[i] == ',') {
@@ -121,6 +126,8 @@ message readMessage(int socket, char * buffer) {
                         }
                         break;
                     case NEXT_PARAM:
+                        message_checksum ^= buffer[i];
+
                         // save previously parsed parameter
                         curr = (item *) malloc(sizeof(item));
                         param_str[param_str_length] = '\0';
@@ -150,8 +157,13 @@ message readMessage(int socket, char * buffer) {
                             checksum[checksum_length++] = buffer[i];
                         } else if (buffer[i] == '\n') {
                             message.checksum = atoi(checksum);
-                            // TODO check message for correctness
-                            parsestate = START;
+
+                            // check message for correctness
+                            if (message.checksum == message_checksum) {
+                                parsestate = START;
+                            } else {
+                                parsestate = ERROR;
+                            }
                         } else {
                             parsestate = ERROR;
                         }
