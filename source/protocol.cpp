@@ -147,21 +147,28 @@ message readMessage(int socket, char * buffer) {
                         break;
                 }
 
-                // after state change we arrived at START again: return the message and save the rest of the buffer
+
+                // after state change we arrived at START again: save the parameters, the rest of the buffer and return the message
                 if (parsestate == START) {
                     message.restbuffer = buffer + i;
                     
                     // save parameters as array in message
                     int param_size = 0;
                     curr = head;
-                    while (curr->next != NULL) param_size++;
+                    while (curr != NULL) {
+                        param_size++;
+                        curr = curr->next;
+                    }
                     int params[param_size];
                     curr = head;
                     for (int j = 0; j < param_size; j++) {
                         params[j] = curr->val;
+                        previous = curr;
                         curr = curr->next;
+                        free(previous);
                     }
                     message.parameters = params;
+                    message.parameter_count = param_size;
 
                     return message;
                 }

@@ -7,6 +7,8 @@ typedef struct {
 
     int * parameters;
 
+    int parameter_count;
+
     int checksum;
 
     char * restbuffer;
