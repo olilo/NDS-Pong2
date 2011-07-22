@@ -123,13 +123,27 @@ message readMessage(int socket, char * buffer) {
                     case NEXT_PARAM:
                         // save previously parsed parameter
                         curr = (item *) malloc(sizeof(item));
+                        param_str[param_str_length] = '\0';
                         curr->val = atoi(param_str);
                         curr->next = NULL;
                         if (previous != NULL) previous->next = curr;
                         previous = curr;
                         if (head == NULL) head = curr;
 
-                        // TODO state change
+                        // initialize next parameter
+                        param_str_length = 0;
+
+                        // state change
+                        if (buffer[i] == ',') {
+                            // no state change necessary
+                        } else if (buffer[i] >= '0' && buffer[i] <= '9') {
+                            param_str[param_str_length++] = buffer[i];
+                            parsestate = PARAM_DECODE;
+                        } else if (buffer[i] == '*') {
+                            parsestate = CHECKSUM;
+                        } else {
+                            parsestate = ERROR;
+                        }
                         break;
                     case CHECKSUM:
                         if (buffer[i] >= '0' && buffer[i] <= '9') {
