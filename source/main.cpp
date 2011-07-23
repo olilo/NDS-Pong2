@@ -6,6 +6,7 @@
 #include "backgrounds.h"
 #include "mode_oneplayer.h"
 #include "mode_twoplayer.h"
+#include "mode_server.h"
 
 
 #define GAME_MODE_LENGTH 1
@@ -17,7 +18,8 @@ typedef struct {
 
 const funcmap gameModes[] = {
     {"1 Player", mode_oneplayer},
-    {"2 Player", mode_twoplayer}
+    {"2 Player", mode_twoplayer},
+    {"Server", mode_server}
 };
 
 
