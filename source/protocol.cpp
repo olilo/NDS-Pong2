@@ -205,7 +205,14 @@ message readMessage(int socket, char * buffer) {
                 if (parsestate == ERROR && buffer[i] == '\n') {
                     parsestate = START;
 
-                    // TODO make a full reset on all variables
+                    // we don't need to reset the contents of the message because they will be overwritten
+
+                    // make a full reset on all variables
+                    // string buffer indices; the buffers themselves don't need to be reset
+                    statuscode_length = 0;
+                    checksum_length = 0;
+                    param_str_length = 0;
+                    param_size = 0;
 
                     // reset the linked list with the parameters and free memory
                     curr = head;
