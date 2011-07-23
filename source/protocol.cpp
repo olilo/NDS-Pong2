@@ -160,6 +160,7 @@ message readMessage(int socket, char * buffer) {
                         if (buffer[i] >= '0' && buffer[i] <= '9' && checksum_length < 10) {
                             checksum[checksum_length++] = buffer[i];
                         } else if (buffer[i] == '\n' && checksum_length > 0) {
+                            checksum[checksum_length] = '\0';
                             message.checksum = atoi(checksum);
 
                             // check message for correctness
