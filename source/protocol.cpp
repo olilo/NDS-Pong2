@@ -74,9 +74,10 @@ message readMessage(int socket, char * buffer) {
             for (int i = 0; i < received_length; i++) {
 
                 // this works like a finite-state machine:
-                // make an action depending on the current state and the current character
+                // make an action depending on the current state and the current character of the message
                 switch (parsestate) {
                     case START:
+                        // every message must start with a $, then we decode the status
                         if (buffer[i] == '$') {
                             parsestate = STATUS_DECODE;
                         } else {
