@@ -44,6 +44,9 @@ void displayMainmenu(int mode) {
         case 1:
             dmaCopyHalfWords(DMA_CHANNEL, mainmenu1Bitmap, (uint16 *)BG_BMP_RAM(0), mainmenu1BitmapLen);
             break;
+        case 2:
+            // TODO display server state correctly
+            break;
     }
 }
 
