@@ -52,6 +52,7 @@ message readMessage(int socket, char * buffer) {
     int checksum_length = 0;
     char param_str[10];
     int param_str_length = 0;
+    int param_size = 0;
 
     // linked list implementation for parameters
     item * curr, * previous, * head;
@@ -117,6 +118,7 @@ message readMessage(int socket, char * buffer) {
                             // convert parameter to int
                             param_str[param_str_length] = '\0';
                             int param = atoi(param_str);
+                            param_size++;
 
                             // linked list logic: add element
                             curr = (item *) malloc(sizeof(item));
@@ -138,6 +140,7 @@ message readMessage(int socket, char * buffer) {
                             // no state change, but empty parameter: add parameter with value 0
                             // we don't need to check head or previous because
                             // both must have been set previously by PARAM_DECODE
+                            param_size++;
                             curr = (item *) malloc(sizeof(item));
                             curr->val = 0;
                             curr->next = NULL;
@@ -179,12 +182,6 @@ message readMessage(int socket, char * buffer) {
                 // save the parameters, the rest of the buffer and return the message
                 if (parsestate == START) {
                     // save parameters as array in message
-                    int param_size = 0;
-                    curr = head;
-                    while (curr != NULL) {
-                        param_size++;
-                        curr = curr->next;
-                    }
                     int params[param_size];
                     curr = head;
                     for (int j = 0; j < param_size; j++) {
