@@ -46,7 +46,6 @@ message readMessage(int socket, char * buffer) {
     parsestate parsestate = START;
 
     // string buffers
-    char statuscode[5];
     int statuscode_length = 0;
     char checksum[10];
     int checksum_length = 0;
@@ -64,176 +63,200 @@ message readMessage(int socket, char * buffer) {
 
     // read from the socket while it is still open (0 means closed)
     while (received_length != 0) {
-        if (received_length > 0) {
-            // data was received, yay :)
-            
-            // protocol handling
-            // TODO handle protocol without finite-state machine to improve performance
-
-            // go through every received character and check it
-            for (int i = 0; i < received_length; i++) {
-
-                // this works like a finite-state machine:
-                // make an action depending on the current state and the current character of the message
-                switch (parsestate) {
-                    case START:
-                        // every message must start with a $, then we decode the status
-                        if (buffer[i] == '$') {
-                            parsestate = STATUS_DECODE;
-                        } else {
-                            parsestate = ERROR;
-                        }
-                        break;
-                    case STATUS_DECODE:
-                        calculated_checksum ^= buffer[i];
-
-                        // get status code, must be exactly 5 characters long
-                        if (buffer[i] >= 'A' && buffer[i] <= 'Z' && statuscode_length < 5) {
-                            statuscode[statuscode_length++] = buffer[i];
-                        } else if (buffer[i] == ',' && statuscode_length == 5) {
-                            message.status = statuscode;
-                            parsestate = PARAM_DECODE;
-                        } else if (buffer[i] == '*' && statuscode_length == 5) {
-                            message.status = statuscode;
-                            parsestate = CHECKSUM;
-                        } else {
-                            parsestate = ERROR;
-                        }
-                        break;
-                    case PARAM_DECODE:
-                        calculated_checksum ^= buffer[i];
-
-                        // get next digit for parameter or change state
-                        if (buffer[i] >= '0' && buffer[i] <= '9' && param_str_length < 10) {
-                            param_str[param_str_length++] = buffer[i];
-                        } else if (buffer[i] == ',') {
-                            parsestate = NEXT_PARAM;
-                        } else if (buffer[i] == '*') {
-                            parsestate = CHECKSUM;
-                        } else {
-                            parsestate = ERROR;
-                        }
-
-                        // if state has changed: save parsed parameter
-                        if (parsestate != PARAM_DECODE) {
-                            // convert parameter to int
-                            param_str[param_str_length] = '\0';
-                            int param = atoi(param_str);
-                            param_size++;
-
-                            // linked list logic: add element
-                            curr = (item *) malloc(sizeof(item));
-                            curr->val = param;
-                            curr->next = NULL;
-                            if (head == NULL) head = curr;
-                            if (previous != NULL) previous->next = curr;
-                            previous = curr;
-                        }
-                        break;
-                    case NEXT_PARAM:
-                        calculated_checksum ^= buffer[i];
-
-                        // initialize next parameter
-                        param_str_length = 0;
-
-                        // state change
-                        if (buffer[i] == ',') {
-                            // no state change, but empty parameter: add parameter with value 0
-                            // we don't need to check head or previous because
-                            // both must have been set previously by PARAM_DECODE
-                            param_size++;
-                            curr = (item *) malloc(sizeof(item));
-                            curr->val = 0;
-                            curr->next = NULL;
-                            previous->next = curr;
-                            previous = curr;
-                        } else if (buffer[i] >= '0' && buffer[i] <= '9') {
-                            param_str[0] = buffer[i];
-                            param_str_length = 1;
-                            parsestate = PARAM_DECODE;
-                        } else if (buffer[i] == '*') {
-                            parsestate = CHECKSUM;
-                        } else {
-                            parsestate = ERROR;
-                        }
-                        break;
-                    case CHECKSUM:
-                        if (buffer[i] >= '0' && buffer[i] <= '9' && checksum_length < 10) {
-                            checksum[checksum_length++] = buffer[i];
-                        } else if (buffer[i] == '\n' && checksum_length > 0) {
-                            checksum[checksum_length] = '\0';
-                            message.checksum = atoi(checksum);
-
-                            // check message for correctness
-                            if (message.checksum == calculated_checksum) {
-                                parsestate = START;
-                            } else {
-                                parsestate = ERROR;
-                            }
-                        } else {
-                            parsestate = ERROR;
-                        }
-                        break;
-                    default:
-                        parsestate = ERROR;
-                        break;
-                }
-
-
-                // the state has changed and we arrived at START again:
-                // save the parameters, the rest of the buffer and return the message
-                if (parsestate == START) {
-                    // save parameters as array in message
-                    int params[param_size];
-                    curr = head;
-                    for (int j = 0; j < param_size; j++) {
-                        params[j] = curr->val;
-                        previous = curr;
-                        curr = curr->next;
-                        free(previous);
-                    }
-                    message.parameters = params;
-                    message.parameter_count = param_size;
-
-                    // TODO this pointer arithmetic is probably not enough ...
-                    message.restbuffer = buffer + i;
-
-                    return message;
-                }
-
-                // parse state was set to error and we reached the end of the message:
-                // discard the message and restart, parsing the next one
-                if (parsestate == ERROR && buffer[i] == '\n') {
-                    parsestate = START;
-
-                    // we don't need to reset the contents of the message because they will be overwritten
-
-                    // make a full reset on all variables
-                    // string buffer indices; the buffers themselves don't need to be reset
-                    statuscode_length = 0;
-                    checksum_length = 0;
-                    param_str_length = 0;
-                    param_size = 0;
-
-                    // reset the linked list with the parameters and free memory
-                    curr = head;
-                    while (curr != NULL) {
-                        previous = curr;
-                        curr = curr->next;
-                        free(previous);
-                    }
-                    previous = NULL;
-                    head = NULL;
-                }
-            }
+        if (received_length < 0) {
+            // TODO add real reading from wifi here
+            received_length = 0;
         }
 
-        // TODO add real reading from wifi here
+        // check if we have received any data from wifi ...
+        if (received_length <= 0) {
+            continue;
+        }
+
+        // data was received, yay :)
+        printf("received data: %d chars...\n", received_length);
+
+        // protocol handling
+        // TODO handle protocol without finite-state machine to improve performance
+
+        // go through every received character and check it
+        for (int i = 0; i < received_length; i++) {
+
+            // this works like a finite-state machine:
+            // make an action depending on the current state and the current character of the message
+            switch (parsestate) {
+                case START:
+                    // every message must start with a $, then we decode the status
+                    if (buffer[i] == '$') {
+                        parsestate = STATUS_DECODE;
+                        //printf("Changed to STATUS_DECODE on %d\n", i);
+                    } else {
+                        parsestate = ERROR;
+                    }
+                    break;
+                case STATUS_DECODE:
+                    // get status code, must be exactly 5 characters long
+                    if (buffer[i] >= 'A' && buffer[i] <= 'Z' && statuscode_length < 5) {
+                        message.status[statuscode_length++] = buffer[i];
+                        calculated_checksum ^= buffer[i];
+                    } else if (buffer[i] == ',' && statuscode_length == 5) {
+                        message.status[statuscode_length] = '\0';
+                        parsestate = PARAM_DECODE;
+                        //printf("Changed to PARAM_DECODE on %d\n", i);
+                    } else if (buffer[i] == '*' && statuscode_length == 5) {
+                        message.status[statuscode_length] = '\0';
+                        parsestate = CHECKSUM;
+                        //printf("Changed to CHECKSUM on %d\n", i);
+                    } else {
+                        parsestate = ERROR;
+                    }
+                    break;
+                case PARAM_DECODE:
+                    // get next digit for parameter or change state
+                    if (buffer[i] >= '0' && buffer[i] <= '9' && param_str_length < 10) {
+                        param_str[param_str_length++] = buffer[i];
+                        calculated_checksum ^= buffer[i];
+                    } else if (buffer[i] == ',') {
+                        parsestate = NEXT_PARAM;
+                        //printf("Changed to NEXT_PARAM on %d\n", i);
+                    } else if (buffer[i] == '*') {
+                        parsestate = CHECKSUM;
+                        //printf("Changed to CHECKSUM on %d\n", i);
+                    } else {
+                        parsestate = ERROR;
+                    }
+
+                    // if state has changed: save parsed parameter
+                    if (parsestate != PARAM_DECODE) {
+                        // convert parameter to int
+                        param_str[param_str_length] = '\0';
+                        int param = atoi(param_str);
+                        param_size++;
+
+                        // linked list logic: add element
+                        curr = (item *) malloc(sizeof(item));
+                        curr->val = param;
+                        curr->next = NULL;
+                        if (head == NULL) head = curr;
+                        if (previous != NULL) previous->next = curr;
+                        previous = curr;
+                    }
+                    break;
+                case NEXT_PARAM:
+                    // initialize next parameter
+                    param_str_length = 0;
+
+                    // state change
+                    if (buffer[i] == ',') {
+                        // no state change, but empty parameter: add parameter with value 0
+                        // we don't need to check head or previous because
+                        // both must have been set previously by PARAM_DECODE
+                        param_size++;
+                        curr = (item *) malloc(sizeof(item));
+                        curr->val = 0;
+                        curr->next = NULL;
+                        previous->next = curr;
+                        previous = curr;
+                        calculated_checksum ^= buffer[i];
+                    } else if (buffer[i] >= '0' && buffer[i] <= '9') {
+                        param_str[0] = buffer[i];
+                        param_str_length = 1;
+                        parsestate = PARAM_DECODE;
+                        calculated_checksum ^= buffer[i];
+                        //printf("Changed to PARAM_DECODE on %d\n", i);
+                    } else if (buffer[i] == '*') {
+                        parsestate = CHECKSUM;
+                        //printf("Changed to CHECKSUM on %d\n", i);
+                    } else {
+                        parsestate = ERROR;
+                    }
+                    break;
+                case CHECKSUM:
+                    if (buffer[i] >= '0' && buffer[i] <= '9' && checksum_length < 10) {
+                        checksum[checksum_length++] = buffer[i];
+                    } else if (buffer[i] == '\n' && checksum_length > 0) {
+                        checksum[checksum_length] = '\0';
+                        message.checksum = atoi(checksum);
+
+                        // check message for correctness
+                        //printf("Checking checksum; calculated: %d, read: %d\n", calculated_checksum, message.checksum);
+                        if (message.checksum == calculated_checksum) {
+                            parsestate = START;
+                        } else {
+                            parsestate = ERROR;
+                        }
+                    } else {
+                        parsestate = ERROR;
+                    }
+                    break;
+                default:
+                    parsestate = ERROR;
+                    break;
+            }
+
+
+            // the state has changed and we arrived at START again:
+            // save the parameters, the rest of the buffer and return the message
+            if (parsestate == START) {
+                // save parameters as array in message
+                int params[param_size];
+                curr = head;
+                for (int j = 0; j < param_size; j++) {
+                    params[j] = curr->val;
+                    previous = curr;
+                    curr = curr->next;
+                    free(previous);
+                }
+                message.parameters = params;
+                message.parameter_count = param_size;
+
+                // TODO this pointer arithmetic is probably not enough ...
+                message.restbuffer = buffer + i + 1;
+
+                return message;
+            }
+
+            // parse state was set to error and we reached the end of the message:
+            // discard the message and restart, parsing the next one
+            if (parsestate == ERROR && buffer[i] == '\n') {
+                //printf("Message had an error, i is %d\n", i);
+                parsestate = START;
+
+                // we don't need to reset the contents of the message because they will be overwritten
+
+                // make a full reset on all variables
+                // string buffer indices; the buffers themselves don't need to be reset
+                statuscode_length = 0;
+                checksum_length = 0;
+                param_str_length = 0;
+                param_size = 0;
+
+                // reset the linked list with the parameters and free memory
+                curr = head;
+                while (curr != NULL) {
+                    previous = curr;
+                    curr = curr->next;
+                    free(previous);
+                }
+                previous = NULL;
+                head = NULL;
+            }
+
+        }
+
+        // if we arrive here then the for loop finished without a finished message
+        // this means that we have to reset received_length
+        // and in the next loop read some more data from the socket into our buffer
+        received_length = -1;
     }
 
     // TODO what do we do if the socket is closed?
-    message.status = "SCLOS";
+    strcpy(message.status, "SCLOS");
+    int params[0];
+    message.parameters = params;
+    message.parameter_count = 0;
     message.restbuffer = buffer;
+    message.checksum = 0;
     return message;
 }
 

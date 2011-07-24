@@ -3,7 +3,7 @@
 // Types
 
 typedef struct {
-    char* status;
+    char status[6];
 
     int * parameters;
 
