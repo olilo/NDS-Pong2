@@ -6,6 +6,19 @@
 
 #include "protocol.h"
 
+// types
+
+// linked list implementation for parameters in readMessage
+struct list_el {
+    int val;
+    struct list_el * next;
+};
+
+typedef struct list_el item;
+
+
+// methods
+
 // TODO make real connection via wifi to server
 /*
 my_socket = socket(AF_INET, SOCK_STREAM, 0);
@@ -15,23 +28,35 @@ sain.sin_port = htons(9005);
 sain.sin_addr.s_addr = "192.168.0.12";
 */
 
-// linked list implementation for parameters
-struct list_el {
-    int val;
-    struct list_el * next;
-};
+void sendMessage(int socket, message message) {
+    // no parameters to encode: only encode status
+    int checksum = 0;
+    for (int i = 0; i < 6; i++) {
+        checksum ^= message.status[i];
+    }
 
-typedef struct list_el item;
+    // TODO determine exact needed size of parambuf
+    char parambuf[200];
+    parambuf[0] = '\0';
+    if (message.parameter_count > 0) {
+        // we have parameters: construct parameter part first
+        for (uint i = 0; i < message.parameter_count; i++) {
+            sprintf(parambuf, "%s,%d", parambuf, message.parameters[i]);
+        }
 
-// parse states
-enum parsestate {
-    START,
-    STATUS_DECODE,
-    PARAM_DECODE,
-    NEXT_PARAM,
-    CHECKSUM,
-    ERROR
-};
+        // calculate checksum of parameter buffer
+        for (uint i = 0; i < strlen(parambuf); i++) {
+            checksum ^= parambuf[i];
+        }
+    }
+
+    // TODO calculate (nearly) exact needed size of retbuf
+    char retbuf[256];
+    sprintf(retbuf, "$%s%s*%d\n", message.status, parambuf, checksum);
+
+    // TODO send it over the socket
+    printf("Message to send: %s", retbuf);
+}
 
 // override method defined in protocol.h
 message readMessage(int socket, char * buffer) {
