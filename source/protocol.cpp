@@ -73,12 +73,12 @@ message readMessage(int socket, char * buffer) {
     parsestate parsestate = START;
 
     // string buffers
-    int statuscode_length = 0;
+    uint statuscode_length = 0;
     char checksum[10];
-    int checksum_length = 0;
+    uint checksum_length = 0;
     char param_str[10];
-    int param_str_length = 0;
-    int param_size = 0;
+    uint param_str_length = 0;
+    uint param_size = 0;
 
     // linked list implementation for parameters
     item * curr, * previous, * head;
@@ -228,7 +228,7 @@ message readMessage(int socket, char * buffer) {
                 // save parameters as array in message
                 int params[param_size];
                 curr = head;
-                for (int j = 0; j < param_size; j++) {
+                for (uint j = 0; j < param_size; j++) {
                     params[j] = curr->val;
                     previous = curr;
                     curr = curr->next;

@@ -7,7 +7,7 @@ typedef struct {
 
     int * parameters;
 
-    int parameter_count;
+    uint parameter_count;
 
     int checksum;
 
