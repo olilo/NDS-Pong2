@@ -19,18 +19,32 @@ typedef struct {
 const funcmap gameModes[] = {
     {"1 Player", mode_oneplayer},
     {"2 Player", mode_twoplayer},
-    {"Server", mode_server}
+    //{"Server", mode_server}
 };
 
 
 int main(void) {
     int held = 0, mode = 0;
+
+    // protocol demo ...
+    consoleDemoInit();
+    printf("Testing the protocol ...\n");
+
+    mode_server();
+
+    printf("\n");
+    printf("Protocol test done, press START to begin\n");
+
+    // wait for start ...
+    while (!(held & KEY_START)) {
+        scanKeys();
+        held = keysHeld();
+    }
     
     powerOn(POWER_ALL);
     lcdSwap();
 
     initVideo();
-    
     initBackgrounds();
     displaySplash();
     displayMainmenu(mode);
