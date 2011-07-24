@@ -21,11 +21,13 @@ typedef struct list_el item;
 
 // TODO make real connection via wifi to server
 /*
-my_socket = socket(AF_INET, SOCK_STREAM, 0);
+int openSocket() {
+int my_socket = socket(AF_INET, SOCK_STREAM, 0);
 
 struct sockaddr_in = AF_INET;
 sain.sin_port = htons(9005);
 sain.sin_addr.s_addr = "192.168.0.12";
+}
 */
 
 void sendMessage(int socket, message message) {
@@ -275,7 +277,7 @@ message readMessage(int socket, char * buffer) {
         received_length = -1;
     }
 
-    // TODO what do we do if the socket is closed?
+    // TODO what status do we return if the socket is closed?
     strcpy(message.status, "SCLOS");
     int params[0];
     message.parameters = params;

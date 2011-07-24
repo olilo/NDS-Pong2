@@ -11,6 +11,12 @@ typedef struct {
 
     int checksum;
 
+    /**
+     * The restbuffer is the remaining rest of the buffer on a readMessage
+     * that did not belong to the message.
+     * Can be copied to the main buffer with this method call:
+     * strcpy(buffer, message.restbuffer);
+     */
     char * restbuffer;
 } message;
 
