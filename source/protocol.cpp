@@ -129,6 +129,7 @@ message readMessage(int socket, char * buffer) {
                     } else if (buffer[i] == ',' && statuscode_length == 5) {
                         message.status[statuscode_length] = '\0';
                         parsestate = PARAM_DECODE;
+                        calculated_checksum ^= buffer[i];
                         //printf("Changed to PARAM_DECODE on %d\n", i);
                     } else if (buffer[i] == '*' && statuscode_length == 5) {
                         message.status[statuscode_length] = '\0';
@@ -145,6 +146,7 @@ message readMessage(int socket, char * buffer) {
                         calculated_checksum ^= buffer[i];
                     } else if (buffer[i] == ',') {
                         parsestate = NEXT_PARAM;
+                        calculated_checksum ^= buffer[i];
                         //printf("Changed to NEXT_PARAM on %d\n", i);
                     } else if (buffer[i] == '*') {
                         parsestate = CHECKSUM;
@@ -170,22 +172,22 @@ message readMessage(int socket, char * buffer) {
                     }
                     break;
                 case NEXT_PARAM:
-                    // initialize next parameter
-                    param_str_length = 0;
-
-                    // state change
-                    if (buffer[i] == ',') {
-                        // no state change, but empty parameter: add parameter with value 0
-                        // we don't need to check head or previous because
-                        // both must have been set previously by PARAM_DECODE
+                    // add new parameter with value 0 if we encounter ',' or '*'
+                    if (buffer[i] == ',' || buffer[i] == '*') {
                         param_size++;
                         curr = (item *) malloc(sizeof(item));
                         curr->val = 0;
                         curr->next = NULL;
                         previous->next = curr;
                         previous = curr;
+                    }
+
+                    // state change
+                    if (buffer[i] == ',') {
+                        // no state change, next time we analyze the next parameter
                         calculated_checksum ^= buffer[i];
                     } else if (buffer[i] >= '0' && buffer[i] <= '9') {
+                        // next parameter: save encountered first digit and go to PARAM_DECODE
                         param_str[0] = buffer[i];
                         param_str_length = 1;
                         parsestate = PARAM_DECODE;
